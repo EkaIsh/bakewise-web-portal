@@ -35,7 +35,61 @@ def _serialize_product(row: dict) -> dict:
     }
 
 
-def _build_product_query(where_clause: str = "", limit_clause: str = "") -> str:
+def _build_product_query(
+    product_id_col: str,
+    name_col: str,
+    price_col: str,
+    category_col: str | None,
+    inventory_product_id_col: str | None,
+    quantity_col: str | None,
+    expiry_col: str | None,
+    where_clause: str = "",
+    limit_clause: str = "",
+) -> str:
+    category_select = (
+        f"p.`{category_col}` AS category"
+        if category_col is not None
+        else "'Uncategorized' AS category"
+    )
+
+    stock_join = ""
+    stock_select = "0 AS available_quantity"
+
+    if inventory_product_id_col and quantity_col:
+        expiry_filter = ""
+        if expiry_col is not None:
+            expiry_filter = f"AND (`{expiry_col}` IS NULL OR `{expiry_col}` >= CURDATE())"
+
+        stock_join = f"""
+            LEFT JOIN (
+                SELECT
+                    `{inventory_product_id_col}` AS stock_product_id,
+                    COALESCE(SUM(`{quantity_col}`), 0) AS available_quantity
+                FROM inventory_batches
+                WHERE `{quantity_col}` > 0
+                {expiry_filter}
+                GROUP BY `{inventory_product_id_col}`
+            ) AS stock
+                ON stock.stock_product_id = p.`{product_id_col}`
+        """
+        stock_select = "COALESCE(stock.available_quantity, 0) AS available_quantity"
+
+    return f"""
+        SELECT
+            p.`{product_id_col}` AS product_id,
+            p.`{name_col}` AS name,
+            {category_select},
+            p.`{price_col}` AS price,
+            {stock_select}
+        FROM products AS p
+        {stock_join}
+        {where_clause}
+        ORDER BY p.`{product_id_col}` ASC
+        {limit_clause}
+    """
+
+
+def _get_schema_info() -> dict:
     product_columns = _get_columns("products")
     inventory_columns = _get_columns("inventory_batches")
 
@@ -56,73 +110,58 @@ def _build_product_query(where_clause: str = "", limit_clause: str = "") -> str:
     if price_col is None:
         raise RuntimeError("No usable product price column found in 'products' table.")
 
-    category_select = (
-        f"p.`{category_col}` AS category"
-        if category_col is not None
-        else "'Uncategorized' AS category"
-    )
+    inventory_product_id_col = _pick_first_existing(inventory_columns, "product_id", "id")
+    quantity_col = _pick_first_existing(inventory_columns, "quantity", "stock", "available_quantity")
+    expiry_col = _pick_first_existing(inventory_columns, "expiry_date", "expiration_date", "expires_at")
 
-    stock_join = ""
-    stock_select = "0 AS available_quantity"
-
-    if inventory_columns:
-        inventory_product_id_col = _pick_first_existing(inventory_columns, "product_id", "id")
-        quantity_col = _pick_first_existing(inventory_columns, "quantity", "stock", "available_quantity")
-        expiry_col = _pick_first_existing(inventory_columns, "expiry_date", "expiration_date", "expires_at")
-
-        if inventory_product_id_col and quantity_col:
-            expiry_filter = ""
-            if expiry_col is not None:
-                expiry_filter = f"AND (`{expiry_col}` IS NULL OR `{expiry_col}` >= CURDATE())"
-
-            stock_join = f"""
-                LEFT JOIN (
-                    SELECT
-                        `{inventory_product_id_col}` AS stock_product_id,
-                        COALESCE(SUM(`{quantity_col}`), 0) AS available_quantity
-                    FROM inventory_batches
-                    WHERE `{quantity_col}` > 0
-                    {expiry_filter}
-                    GROUP BY `{inventory_product_id_col}`
-                ) AS stock
-                    ON stock.stock_product_id = p.`{product_id_col}`
-            """
-            stock_select = "COALESCE(stock.available_quantity, 0) AS available_quantity"
-
-    query = f"""
-        SELECT
-            p.`{product_id_col}` AS product_id,
-            p.`{name_col}` AS name,
-            {category_select},
-            p.`{price_col}` AS price,
-            {stock_select}
-        FROM products AS p
-        {stock_join}
-        {where_clause}
-        ORDER BY p.`{product_id_col}` ASC
-        {limit_clause}
-    """
-    return query
+    return {
+        "product_id_col": product_id_col,
+        "name_col": name_col,
+        "price_col": price_col,
+        "category_col": category_col,
+        "inventory_product_id_col": inventory_product_id_col,
+        "quantity_col": quantity_col,
+        "expiry_col": expiry_col,
+    }
 
 
 def fetch_all_products() -> list[dict]:
+    schema = _get_schema_info()
     cursor = mysql.get_cursor()
-    query = _build_product_query()
+
+    query = _build_product_query(
+        product_id_col=schema["product_id_col"],
+        name_col=schema["name_col"],
+        price_col=schema["price_col"],
+        category_col=schema["category_col"],
+        inventory_product_id_col=schema["inventory_product_id_col"],
+        quantity_col=schema["quantity_col"],
+        expiry_col=schema["expiry_col"],
+    )
+
     cursor.execute(query)
     return [_serialize_product(row) for row in cursor.fetchall()]
 
 
 def fetch_product_by_id(product_id: int) -> dict | None:
+    schema = _get_schema_info()
     cursor = mysql.get_cursor()
-    query = _build_product_query(where_clause="WHERE p.`product_id` = %s", limit_clause="LIMIT 1")
 
-    try:
-        cursor.execute(query, (product_id,))
-    except Exception:
-        fallback_query = _build_product_query(where_clause="WHERE p.`id` = %s", limit_clause="LIMIT 1")
-        cursor.execute(fallback_query, (product_id,))
+    query = _build_product_query(
+        product_id_col=schema["product_id_col"],
+        name_col=schema["name_col"],
+        price_col=schema["price_col"],
+        category_col=schema["category_col"],
+        inventory_product_id_col=schema["inventory_product_id_col"],
+        quantity_col=schema["quantity_col"],
+        expiry_col=schema["expiry_col"],
+        where_clause=f"WHERE p.`{schema['product_id_col']}` = %s",
+        limit_clause="LIMIT 1",
+    )
 
+    cursor.execute(query, (product_id,))
     row = cursor.fetchone()
+
     if row is None:
         return None
 
