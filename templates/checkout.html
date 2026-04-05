@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout · {{ bakewise.store_name }}{% endblock %}
+
+{% block content %}
+  <main class="page-shell checkout-shell" id="checkout-page">
+    <section class="checkout-page__intro section-heading section-heading--tight">
+      <div>
+        <p class="eyebrow">Checkout</p>
+        <h1>Almost there</h1>
+        <p class="support-copy">Review your items, add your details, and we’ll send the order to the bakery. Payment labels are for staff only—no online payment is processed here.</p>
+      </div>
+    </section>
+
+    <section
+      id="checkoutEmptyState"
+      class="checkout-empty"
+      aria-labelledby="checkout-empty-heading"
+    >
+      <div class="empty-cart-card">
+        <h2 id="checkout-empty-heading">Your cart is empty</h2>
+        <p>Add something delicious from the catalog before you check out.</p>
+        <div class="hero__actions">
+          <a class="button button--solid" href="/products">Browse products</a>
+          <a class="button button--ghost" href="/cart">View cart</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="checkoutMain" class="checkout-main" hidden>
+      <div class="checkout-layout checkout-layout--page">
+        <div class="card-panel checkout-summary-panel">
+          <div class="panel-header">
+            <h2>Order summary</h2>
+            <span id="checkoutCartCount">0 items</span>
+          </div>
+          <div id="checkoutCartItems" class="checkout-items" role="list"></div>
+          <div class="checkout-summary-total">
+            <span>Order total</span>
+            <strong id="checkoutTotal">PHP 0.00</strong>
+          </div>
+        </div>
+
+        <div class="card-panel checkout-details-panel">
+          <div class="panel-header">
+            <h2>Your details</h2>
+            <span>Required fields are marked *</span>
+          </div>
+          <form id="checkoutForm" class="checkout-form" novalidate>
+            <label class="checkout-form__field">
+              <span>Your name *</span>
+              <input id="customerName" name="customer_name" type="text" autocomplete="name" required maxlength="120" placeholder="e.g. Ana Reyes">
+            </label>
+            <label class="checkout-form__field">
+              <span>Contact number *</span>
+              <input id="customerPhone" name="contact_number" type="tel" autocomplete="tel" required minlength="7" maxlength="32" placeholder="Mobile or phone">
+            </label>
+            <label class="checkout-form__field">
+              <span>Payment method *</span>
+              <select id="paymentMethod" name="payment_method" required>
+                <option value="">Choose one…</option>
+                <option value="Cash">Cash</option>
+                <option value="GCash">GCash</option>
+                <option value="Card">Card</option>
+              </select>
+            </label>
+            <label class="checkout-form__field">
+              <span>Pickup date *</span>
+              <input id="pickupDate" name="pickup_date" type="date" required>
+            </label>
+            <label class="checkout-form__field">
+              <span>Notes <span class="checkout-form__optional">(optional)</span></span>
+              <textarea id="orderNotes" name="notes" rows="3" maxlength="500" placeholder="Allergies, preferred pickup time window, etc."></textarea>
+            </label>
+
+            <p id="checkoutFeedback" class="feedback-message" role="status" aria-live="polite"></p>
+
+            <button id="submitOrderButton" class="button button--solid button--full" type="submit">
+              Place order
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+{% endblock %}

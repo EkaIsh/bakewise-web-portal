@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <main class="page-shell" id="main-content">
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero__copy">
+        <p class="eyebrow">Welcome</p>
+        <h1 id="hero-heading">Oven-fresh bread, pastries, and treats—made for your table.</h1>
+        <p>
+          Browse the catalog, fill your cart, and check out for pickup—your order goes straight into BakeWise for the team to prepare.
+        </p>
+        <div class="hero__actions">
+          <a class="button button--solid" href="/products">View products</a>
+          <a class="button button--ghost" href="/cart">View cart</a>
+        </div>
+      </div>
+      <div class="hero__panel" aria-label="Highlights">
+        <div class="hero-card">
+          <p>Orders</p>
+          <strong id="heroOrderingStatus">Checking…</strong>
+          <span id="heroProductCount">Loading catalog…</span>
+        </div>
+        <div class="hero-card hero-card--accent">
+          <p>Quality</p>
+          <strong>Small batches</strong>
+          <span>Simple, modern storefront—ready to plug into your BakeWise catalog.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="featured-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Featured</p>
+          <h2 id="featured-heading">Fresh from the oven</h2>
+          <p class="section-lead">Live products from your BakeWise catalog. <a class="text-link" href="/products">See everything &rarr;</a></p>
+        </div>
+        <a class="text-link" href="/products">All products</a>
+      </div>
+      <div class="product-grid" id="featuredProducts" role="list">
+        <p class="empty-card empty-card--loading">Loading products&hellip;</p>
+      </div>
+    </section>
+
+    <section class="section-split" aria-label="About ordering">
+      <article class="info-panel">
+        <p class="eyebrow">For customers</p>
+        <h2>Easy to browse on any device.</h2>
+        <ul class="check-list">
+          <li>Clear navigation: home, catalog, and cart.</li>
+          <li>Real prices and stock from your BakeWise database.</li>
+          <li>Responsive grids and typography for phones and desktops.</li>
+        </ul>
+      </article>
+      <article class="info-panel info-panel--soft">
+        <p class="eyebrow">How it works</p>
+        <h2>Order in three steps.</h2>
+        <ol class="steps-list">
+          <li>Browse the catalog and add items to your cart.</li>
+          <li>Fill in your details and pickup date at checkout.</li>
+          <li>Your order is sent straight into BakeWise for the team to prepare.</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+{% endblock %}

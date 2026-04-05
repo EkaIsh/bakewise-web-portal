@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ bakewise.store_name }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='assets/styles.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body data-page="{{ page_name|default('home') }}">
+  <header class="site-header">
+    <a class="brand-mark" href="/">
+      <span class="brand-mark__icon" aria-hidden="true">BW</span>
+      <span>
+        <strong>{{ bakewise.store_name }}</strong>
+        <small>Artisan bakery</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/" {% if page_name|default('') == 'home' %}class="is-active" aria-current="page"{% endif %}>Home</a>
+      <a href="/products" {% if page_name|default('') == 'products' %}class="is-active" aria-current="page"{% endif %}>Products</a>
+      <a href="/cart" {% if page_name|default('') == 'cart' %}class="is-active" aria-current="page"{% endif %}>Cart</a>
+    </nav>
+    <a class="cart-chip" href="/cart" aria-label="View cart">
+      <span class="cart-chip__label">Cart</span>
+      <span class="cart-chip__count" data-cart-count aria-live="polite">0</span>
+    </a>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer class="site-footer">
+    <div class="site-footer__brand">
+      <strong>{{ bakewise.store_name }}</strong>
+      <p>Fresh bakes and simple online ordering—built to grow with your bakery.</p>
+    </div>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/products">Products</a>
+      <a href="/cart">Cart</a>
+      <a href="/checkout">Checkout</a>
+    </nav>
+  </footer>
+
+  {% block site_scripts %}
+  <script>
+    window.BAKEWISE_CONFIG = {{ bakewise | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='assets/app.js') }}" defer></script>
+  {% endblock %}
+</body>
+</html>

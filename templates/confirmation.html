@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Order confirmed · {{ bakewise.store_name }}{% endblock %}
+
+{% block content %}
+  <main class="page-shell confirmation-shell">
+    <section class="confirmation-card">
+      <p class="eyebrow">Order confirmation</p>
+      <h1 id="confirmationTitle">Loading your order…</h1>
+      <p id="confirmationMeta">Please wait a moment.</p>
+      <div id="confirmationItems" class="confirmation-items" role="list"></div>
+      <div class="hero__actions hero__actions--confirmation">
+        <a class="button button--solid" href="/products">Browse products</a>
+        <a class="button button--ghost" href="/">Back to home</a>
+      </div>
+    </section>
+  </main>
+{% endblock %}

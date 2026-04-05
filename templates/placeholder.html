@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{ stub_title }} · {{ bakewise.store_name }}{% endblock %}
+
+{% block content %}
+  <main class="page-shell page-shell--stub">
+    <section class="stub-panel">
+      <p class="eyebrow">Part 7.1</p>
+      <h1>{{ stub_title }}</h1>
+      <p class="stub-panel__message">{{ stub_message }}</p>
+      <div class="hero__actions">
+        <a class="button button--solid" href="/">Back to home</a>
+      </div>
+    </section>
+  </main>
+{% endblock %}
+
+{% block site_scripts %}{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Cart · {{ bakewise.store_name }}{% endblock %}
+
+{% block content %}
+  <main class="page-shell page-shell--cart" id="cart-page">
+    <section class="cart-page__intro section-heading section-heading--tight">
+      <div>
+        <p class="eyebrow">Basket</p>
+        <h1>Your cart</h1>
+        <p id="cartPageCount" class="cart-page__count" hidden></p>
+      </div>
+    </section>
+
+    <section
+      id="cartEmptyState"
+      class="cart-page__empty"
+      aria-labelledby="cart-empty-heading"
+    >
+      <div class="empty-cart-card">
+        <h2 id="cart-empty-heading">Your basket is empty</h2>
+        <p>When you add items from the product catalog, they will show up here. You can change quantities or remove lines anytime before checkout.</p>
+        <div class="hero__actions">
+          <a class="button button--solid" href="/products">Browse products</a>
+          <a class="button button--ghost" href="/">Back to home</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="cartMain" class="cart-page__main" hidden>
+      <div class="cart-line cart-line--head" aria-hidden="true">
+        <span class="cart-line__cell cart-line__cell--thumb"></span>
+        <span class="cart-line__cell">Product</span>
+        <span class="cart-line__cell cart-line__cell--numeric">Price</span>
+        <span class="cart-line__cell cart-line__cell--qty">Quantity</span>
+        <span class="cart-line__cell cart-line__cell--numeric">Subtotal</span>
+        <span class="cart-line__cell cart-line__cell--action"></span>
+      </div>
+
+      <div id="cartPageLines" class="cart-lines-list" role="list"></div>
+
+      <footer class="cart-page__footer">
+        <div class="cart-page__footer-row cart-page__footer-row--actions">
+          <a class="button button--ghost" href="/products">Continue shopping</a>
+          <div class="cart-page__total">
+            <span class="cart-page__total-label">Estimated total</span>
+            <strong id="cartPageTotal" class="cart-page__total-value">PHP 0.00</strong>
+          </div>
+        </div>
+        <div class="cart-page__footer-row cart-page__footer-next">
+          <a class="button button--solid button--full cart-page__checkout-btn" href="/checkout">Proceed to checkout</a>
+        </div>
+        <p class="cart-page__checkout-hint">
+          At checkout you’ll add your name, contact number, payment preference, and pickup date. No online payment is processed on this site.
+        </p>
+      </footer>
+    </section>
+  </main>
+{% endblock %}

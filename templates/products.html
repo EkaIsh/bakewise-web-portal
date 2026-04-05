@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Products · {{ bakewise.store_name }}{% endblock %}
+
+{% block content %}
+  <main class="page-shell page-shell--catalog" id="products-page">
+    <section class="section-heading section-heading--tight">
+      <div>
+        <p class="eyebrow">Product catalog</p>
+        <h1>Fresh from the oven</h1>
+        <p class="support-copy">Browse everything we offer. Prices and stock come straight from your BakeWise catalog.</p>
+      </div>
+    </section>
+
+    <div
+      id="catalogError"
+      class="catalog-alert"
+      role="alert"
+      aria-live="polite"
+      hidden
+    ></div>
+
+    <section class="catalog-toolbar" id="catalogToolbar" aria-label="Search and filters">
+      <label class="search-box">
+        <span>Search</span>
+        <input id="searchInput" type="search" placeholder="Name, category, or product #" autocomplete="off">
+      </label>
+      <div class="category-box">
+        <span>Category</span>
+        <div id="categoryFilters" class="filter-row"></div>
+      </div>
+    </section>
+
+    <section class="catalog-main" aria-label="Product list">
+      <div class="inline-stats">
+        <strong id="productCount">0 products</strong>
+        <span class="inline-stats__hint" id="catalogHint">Loading catalog…</span>
+      </div>
+      <div class="product-grid" id="productGrid">
+        <p class="empty-card empty-card--loading">Loading products…</p>
+      </div>
+    </section>
+  </main>
+{% endblock %}
