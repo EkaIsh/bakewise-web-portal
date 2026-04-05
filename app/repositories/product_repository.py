@@ -3,101 +3,126 @@ from __future__ import annotations
 from ..extensions import mysql
 
 
+def _table_exists(table_name: str) -> bool:
+    cursor = mysql.get_cursor()
+    cursor.execute("SHOW TABLES LIKE %s", (table_name,))
+    return cursor.fetchone() is not None
+
+
+def _get_columns(table_name: str) -> set[str]:
+    if not _table_exists(table_name):
+        return set()
+
+    cursor = mysql.get_cursor()
+    cursor.execute(f"SHOW COLUMNS FROM `{table_name}`")
+    return {row["Field"] for row in cursor.fetchall()}
+
+
+def _pick_first_existing(columns: set[str], *candidates: str) -> str | None:
+    for candidate in candidates:
+        if candidate in columns:
+            return candidate
+    return None
+
+
 def _serialize_product(row: dict) -> dict:
-    """Convert one database row into a simple product dictionary."""
     return {
         "product_id": int(row["product_id"]),
-        "name": row["name"],
+        "name": row.get("name") or "Unnamed Product",
         "category": row.get("category") or "Uncategorized",
-        "price": float(row["price"]),
+        "price": float(row.get("price") or 0),
         "available_quantity": int(row.get("available_quantity") or 0),
     }
 
 
-def _products_has_category_column() -> bool:
-    """Check if the BakeWise products table includes a category column."""
-    cursor = mysql.get_cursor()
-    cursor.execute("SHOW COLUMNS FROM products")
-    columns = {row["Field"] for row in cursor.fetchall()}
-    return "category" in columns
+def _build_product_query(where_clause: str = "", limit_clause: str = "") -> str:
+    product_columns = _get_columns("products")
+    inventory_columns = _get_columns("inventory_batches")
 
+    if not product_columns:
+        raise RuntimeError("Table 'products' does not exist in the connected database.")
 
-def fetch_all_products() -> list[dict]:
-    """
-    Read all products for the storefront.
+    product_id_col = _pick_first_existing(product_columns, "product_id", "id")
+    name_col = _pick_first_existing(product_columns, "name", "product_name")
+    price_col = _pick_first_existing(product_columns, "price", "selling_price", "unit_price")
+    category_col = _pick_first_existing(product_columns, "category")
 
-    Works whether the products table has a `category` column or not.
-    """
-    cursor = mysql.get_cursor()
+    if product_id_col is None:
+        raise RuntimeError("No usable product ID column found in 'products' table.")
+
+    if name_col is None:
+        raise RuntimeError("No usable product name column found in 'products' table.")
+
+    if price_col is None:
+        raise RuntimeError("No usable product price column found in 'products' table.")
 
     category_select = (
-        "p.category AS category"
-        if _products_has_category_column()
+        f"p.`{category_col}` AS category"
+        if category_col is not None
         else "'Uncategorized' AS category"
     )
 
+    stock_join = ""
+    stock_select = "0 AS available_quantity"
+
+    if inventory_columns:
+        inventory_product_id_col = _pick_first_existing(inventory_columns, "product_id", "id")
+        quantity_col = _pick_first_existing(inventory_columns, "quantity", "stock", "available_quantity")
+        expiry_col = _pick_first_existing(inventory_columns, "expiry_date", "expiration_date", "expires_at")
+
+        if inventory_product_id_col and quantity_col:
+            expiry_filter = ""
+            if expiry_col is not None:
+                expiry_filter = f"AND (`{expiry_col}` IS NULL OR `{expiry_col}` >= CURDATE())"
+
+            stock_join = f"""
+                LEFT JOIN (
+                    SELECT
+                        `{inventory_product_id_col}` AS stock_product_id,
+                        COALESCE(SUM(`{quantity_col}`), 0) AS available_quantity
+                    FROM inventory_batches
+                    WHERE `{quantity_col}` > 0
+                    {expiry_filter}
+                    GROUP BY `{inventory_product_id_col}`
+                ) AS stock
+                    ON stock.stock_product_id = p.`{product_id_col}`
+            """
+            stock_select = "COALESCE(stock.available_quantity, 0) AS available_quantity"
+
     query = f"""
         SELECT
-            p.product_id,
-            p.name,
+            p.`{product_id_col}` AS product_id,
+            p.`{name_col}` AS name,
             {category_select},
-            p.price,
-            COALESCE(stock.available_quantity, 0) AS available_quantity
+            p.`{price_col}` AS price,
+            {stock_select}
         FROM products AS p
-        LEFT JOIN (
-            SELECT
-                product_id,
-                COALESCE(SUM(quantity), 0) AS available_quantity
-            FROM inventory_batches
-            WHERE quantity > 0
-              AND (expiry_date IS NULL OR expiry_date >= CURDATE())
-            GROUP BY product_id
-        ) AS stock
-            ON stock.product_id = p.product_id
-        ORDER BY p.product_id ASC
+        {stock_join}
+        {where_clause}
+        ORDER BY p.`{product_id_col}` ASC
+        {limit_clause}
     """
+    return query
+
+
+def fetch_all_products() -> list[dict]:
+    cursor = mysql.get_cursor()
+    query = _build_product_query()
     cursor.execute(query)
     return [_serialize_product(row) for row in cursor.fetchall()]
 
 
 def fetch_product_by_id(product_id: int) -> dict | None:
-    """
-    Read one product by ID.
-
-    Works whether the products table has a `category` column or not.
-    """
     cursor = mysql.get_cursor()
+    query = _build_product_query(where_clause="WHERE p.`product_id` = %s", limit_clause="LIMIT 1")
 
-    category_select = (
-        "p.category AS category"
-        if _products_has_category_column()
-        else "'Uncategorized' AS category"
-    )
+    try:
+        cursor.execute(query, (product_id,))
+    except Exception:
+        fallback_query = _build_product_query(where_clause="WHERE p.`id` = %s", limit_clause="LIMIT 1")
+        cursor.execute(fallback_query, (product_id,))
 
-    query = f"""
-        SELECT
-            p.product_id,
-            p.name,
-            {category_select},
-            p.price,
-            COALESCE(stock.available_quantity, 0) AS available_quantity
-        FROM products AS p
-        LEFT JOIN (
-            SELECT
-                product_id,
-                COALESCE(SUM(quantity), 0) AS available_quantity
-            FROM inventory_batches
-            WHERE quantity > 0
-              AND (expiry_date IS NULL OR expiry_date >= CURDATE())
-            GROUP BY product_id
-        ) AS stock
-            ON stock.product_id = p.product_id
-        WHERE p.product_id = %s
-        LIMIT 1
-    """
-    cursor.execute(query, (product_id,))
     row = cursor.fetchone()
-
     if row is None:
         return None
 
