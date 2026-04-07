@@ -15,12 +15,15 @@ class MySQLConnectionManager:
 
     def get_connection(self):
         """Reuse one connection per request instead of reconnecting repeatedly."""
-        if self.connection_key not in g:
-            g[self.connection_key] = mysql_connector.connect(
+        connection = getattr(g, self.connection_key, None)
+
+        if connection is None:
+            connection = mysql_connector.connect(
                 **current_app.config["MYSQL_SETTINGS"]
             )
+            setattr(g, self.connection_key, connection)
 
-        return g[self.connection_key]
+        return connection
 
     def get_cursor(self, dictionary: bool = True):
         """Create a cursor that future repositories can use for SQL queries."""
@@ -34,9 +37,15 @@ class MySQLConnectionManager:
 
     def close_connection(self, exception: Exception | None = None) -> None:
         """Close the request-scoped connection if one was opened."""
-        connection = g.pop(self.connection_key, None)
-        if connection is not None and connection.is_connected():
-            connection.close()
+        connection = getattr(g, self.connection_key, None)
+
+        if connection is not None:
+            try:
+                if connection.is_connected():
+                    connection.close()
+            finally:
+                if hasattr(g, self.connection_key):
+                    delattr(g, self.connection_key)
 
 
 mysql = MySQLConnectionManager()
