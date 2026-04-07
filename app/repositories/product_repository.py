@@ -35,60 +35,6 @@ def _serialize_product(row: dict) -> dict:
     }
 
 
-def _build_product_query(
-    product_id_col: str,
-    name_col: str,
-    price_col: str,
-    category_col: str | None,
-    inventory_product_id_col: str | None,
-    quantity_col: str | None,
-    expiry_col: str | None,
-    where_clause: str = "",
-    limit_clause: str = "",
-) -> str:
-    category_select = (
-        f"p.`{category_col}` AS category"
-        if category_col is not None
-        else "'Uncategorized' AS category"
-    )
-
-    stock_join = ""
-    stock_select = "0 AS available_quantity"
-
-    if inventory_product_id_col and quantity_col:
-        expiry_filter = ""
-        if expiry_col is not None:
-            expiry_filter = f"AND (`{expiry_col}` IS NULL OR `{expiry_col}` >= CURDATE())"
-
-        stock_join = f"""
-            LEFT JOIN (
-                SELECT
-                    `{inventory_product_id_col}` AS stock_product_id,
-                    COALESCE(SUM(`{quantity_col}`), 0) AS available_quantity
-                FROM inventory_batches
-                WHERE `{quantity_col}` > 0
-                {expiry_filter}
-                GROUP BY `{inventory_product_id_col}`
-            ) AS stock
-                ON stock.stock_product_id = p.`{product_id_col}`
-        """
-        stock_select = "COALESCE(stock.available_quantity, 0) AS available_quantity"
-
-    return f"""
-        SELECT
-            p.`{product_id_col}` AS product_id,
-            p.`{name_col}` AS name,
-            {category_select},
-            p.`{price_col}` AS price,
-            {stock_select}
-        FROM products AS p
-        {stock_join}
-        {where_clause}
-        ORDER BY p.`{product_id_col}` ASC
-        {limit_clause}
-    """
-
-
 def _get_schema_info() -> dict:
     product_columns = _get_columns("products")
     inventory_columns = _get_columns("inventory_batches")
@@ -110,9 +56,14 @@ def _get_schema_info() -> dict:
     if price_col is None:
         raise RuntimeError("No usable product price column found in 'products' table.")
 
-    inventory_product_id_col = _pick_first_existing(inventory_columns, "product_id", "id")
-    quantity_col = _pick_first_existing(inventory_columns, "quantity", "stock", "available_quantity")
-    expiry_col = _pick_first_existing(inventory_columns, "expiry_date", "expiration_date", "expires_at")
+    inventory_product_id_col = None
+    quantity_col = None
+    expiry_col = None
+
+    if inventory_columns:
+        inventory_product_id_col = _pick_first_existing(inventory_columns, "product_id", "id")
+        quantity_col = _pick_first_existing(inventory_columns, "quantity", "stock", "available_quantity")
+        expiry_col = _pick_first_existing(inventory_columns, "expiry_date", "expiration_date", "expires_at")
 
     return {
         "product_id_col": product_id_col,
@@ -123,6 +74,60 @@ def _get_schema_info() -> dict:
         "quantity_col": quantity_col,
         "expiry_col": expiry_col,
     }
+
+
+def _build_product_query(
+    product_id_col: str,
+    name_col: str,
+    price_col: str,
+    category_col: str | None,
+    inventory_product_id_col: str | None,
+    quantity_col: str | None,
+    expiry_col: str | None,
+    where_clause: str = "",
+    limit_clause: str = "",
+) -> str:
+    category_select = (
+        f"p.`{category_col}` AS category"
+        if category_col is not None
+        else "'Uncategorized' AS category"
+    )
+
+    stock_select = "0 AS available_quantity"
+    stock_join = ""
+
+    if inventory_product_id_col and quantity_col:
+        expiry_filter = ""
+        if expiry_col is not None:
+            expiry_filter = f"AND (`{expiry_col}` IS NULL OR `{expiry_col}` >= CURDATE())"
+
+        stock_select = "COALESCE(stock.available_quantity, 0) AS available_quantity"
+        stock_join = f"""
+            LEFT JOIN (
+                SELECT
+                    `{inventory_product_id_col}` AS stock_product_id,
+                    COALESCE(SUM(`{quantity_col}`), 0) AS available_quantity
+                FROM inventory_batches
+                WHERE `{quantity_col}` > 0
+                {expiry_filter}
+                GROUP BY `{inventory_product_id_col}`
+            ) AS stock
+                ON stock.stock_product_id = p.`{product_id_col}`
+        """
+
+    return f"""
+        SELECT
+            p.`{product_id_col}` AS product_id,
+            p.`{name_col}` AS name,
+            {category_select},
+            p.`{price_col}` AS price,
+            {stock_select}
+        FROM products AS p
+        {stock_join}
+        {where_clause}
+        ORDER BY p.`{product_id_col}` ASC
+        {limit_clause}
+    """
 
 
 def fetch_all_products() -> list[dict]:
