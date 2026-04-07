@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from flask import Flask, current_app, g
-import mysql.connector
+import mysql.connector as mysql_connector
 
 
 class MySQLConnectionManager:
@@ -16,7 +16,7 @@ class MySQLConnectionManager:
     def get_connection(self):
         """Reuse one connection per request instead of reconnecting repeatedly."""
         if self.connection_key not in g:
-            g[self.connection_key] = mysql.connector.connect(
+            g[self.connection_key] = mysql_connector.connect(
                 **current_app.config["MYSQL_SETTINGS"]
             )
 
