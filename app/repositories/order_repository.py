@@ -3,6 +3,15 @@ from __future__ import annotations
 from ..extensions import mysql
 
 
+def _serialize_temporal(value):
+    """Return a JSON-safe date/datetime string from either DB objects or plain strings."""
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
 def insert_order(order_data: dict) -> int:
     """
     Insert the order header into BakeWise.
@@ -148,11 +157,11 @@ def fetch_order_by_id(order_id: int) -> dict | None:
         "payment_method": order_row.get("payment_method"),
         "service_mode": order_row.get("service_mode"),
         "order_source": order_row.get("order_source"),
-        "pickup_date_from": order_row.get("pickup_date_from").isoformat() if order_row.get("pickup_date_from") else None,
-        "pickup_date_to": order_row.get("pickup_date_to").isoformat() if order_row.get("pickup_date_to") else None,
+        "pickup_date_from": _serialize_temporal(order_row.get("pickup_date_from")),
+        "pickup_date_to": _serialize_temporal(order_row.get("pickup_date_to")),
         "online_order_status": order_row.get("online_order_status"),
         "total": float(order_row.get("total") or 0),
         "amount_paid": float(order_row.get("amount_paid") or 0),
-        "created_at": order_row.get("date").isoformat() if order_row.get("date") else None,
+        "created_at": _serialize_temporal(order_row.get("date")),
         "items": items,
     }
